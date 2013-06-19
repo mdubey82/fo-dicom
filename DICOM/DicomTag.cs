@@ -61,19 +61,25 @@ namespace Dicom {
 			}
 
 			switch (format) {
-				case "g": {
-						if (PrivateCreator != null)
-							return String.Format("{0:x4},{1:x4}:{2}", Group, Element, PrivateCreator.Creator);
-						else
-							return String.Format("{0:x4},{1:x4}", Group, Element);
-					}
-				case "G":
-				default: {
+			case "X": {
+				if (PrivateCreator != null)
+					return String.Format("({0:x4},xx{1:x2}:{2})", Group, Element & 0xff, PrivateCreator.Creator);
+				else
+					return String.Format("({0:x4},{1:x4})", Group, Element);
+			}
+			case "g": {
 					if (PrivateCreator != null)
-						return String.Format("({0:x4},{1:x4}:{2})", Group, Element, PrivateCreator.Creator);
+						return String.Format("{0:x4},{1:x4}:{2}", Group, Element, PrivateCreator.Creator);
 					else
-						return String.Format("({0:x4},{1:x4})", Group, Element);
-					}
+						return String.Format("{0:x4},{1:x4}", Group, Element);
+				}
+			case "G":
+			default: {
+				if (PrivateCreator != null)
+					return String.Format("({0:x4},{1:x4}:{2})", Group, Element, PrivateCreator.Creator);
+				else
+					return String.Format("({0:x4},{1:x4})", Group, Element);
+				}
 			}
 		}
 
@@ -81,17 +87,14 @@ namespace Dicom {
 			if (Group != other.Group)
 				return Group.CompareTo(other.Group);
 
-			if (PrivateCreator != null || other.PrivateCreator != null) {
-				if (PrivateCreator == null)
-					return -1;
-				if (other.PrivateCreator == null)
-					return 1;
+			// sort by private creator only if element values are equal
+			if (Element == other.Element && (PrivateCreator != null || other.PrivateCreator != null)) {
+			    if (PrivateCreator == null)
+			        return -1;
+			    if (other.PrivateCreator == null)
+			        return 1;
 
-				int compare = PrivateCreator.CompareTo(other.PrivateCreator);
-				if (compare != 0)
-					return compare;
-
-				return (Element & 0xff).CompareTo(other.Element & 0xff);
+				return PrivateCreator.CompareTo(other.PrivateCreator);
 			}
 
 			if (Element != other.Element)
@@ -138,7 +141,7 @@ namespace Dicom {
 
 		public override int GetHashCode() {
 			if (_hash == 0)
-				_hash = ToString().GetHashCode();
+				_hash = ToString("X", null).GetHashCode();
 			return _hash;
 		}
 
