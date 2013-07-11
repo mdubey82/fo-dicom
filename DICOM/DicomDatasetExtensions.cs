@@ -5,7 +5,9 @@ using System.Linq;
 namespace Dicom {
 	public static class DicomDatasetExtensions {
 		public static DicomDataset Clone(this DicomDataset dataset) {
-			return new DicomDataset(dataset);
+			var clone= new DicomDataset(dataset);
+            clone.InternalTransferSyntax = dataset.InternalTransferSyntax;
+            return clone;
 		}
 
 		public static DateTime GetDateTime(this DicomDataset dataset, DicomTag date, DicomTag time) {
