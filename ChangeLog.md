@@ -1,7 +1,12 @@
-#### v1.0.36
+#### v1.0.37
+* Add support for disabling TCP Nagle algorithm
+
+#### v1.0.36 (8/6/2013)
 * Fix bug sorting private tags
 * Ability to add private tags to dataset
 * Better handling of improperly encoded private sequences
+* Fix bug adding presentation contexts from requests
+* Fix typo in N-Set response handler
 
 #### v1.0.35 (7/5/2013)
 * Fix bug adding presentation contexts with Implicit Little Endian syntax

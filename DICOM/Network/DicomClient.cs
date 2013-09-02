@@ -21,6 +21,7 @@ namespace Dicom.Network {
 		private int _asyncInvoked;
 		private int _asyncPerformed;
 		private TcpClient _client;
+		private bool _abort;
 
 		public DicomClient() {
 			_requests = new List<DicomRequest>();
@@ -63,8 +64,8 @@ namespace Dicom.Network {
 		/// Additional presentation contexts to negotiate with association.
 		/// </summary>
 		public List<DicomPresentationContext> AdditionalPresentationContexts {
-			get;
-			set;
+			get { return _contexts; }
+			set { _contexts = value; }
 		}
 
 		public object UserState {
@@ -87,6 +88,11 @@ namespace Dicom.Network {
 
 		public IAsyncResult BeginSend(string host, int port, bool useTls, string callingAe, string calledAe, AsyncCallback callback, object state) {
 			_client = new TcpClient(host, port);
+
+			if (Options != null)
+				_client.NoDelay = Options.TcpNoDelay;
+			else
+				_client.NoDelay = DicomServiceOptions.Default.TcpNoDelay;
 
 			Stream stream = _client.GetStream();
 
@@ -144,8 +150,16 @@ namespace Dicom.Network {
 			_service = null;
 			_async = null;
 
-			if (_exception != null)
+			if (_exception != null && !_abort)
 				throw _exception;
+		}
+
+		public void Abort() {
+			try {
+				_abort = true;
+				_client.Close();
+			} catch {
+			}
 		}
 
 		private class DicomServiceUser : DicomService, IDicomServiceUser {
