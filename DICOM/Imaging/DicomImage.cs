@@ -20,8 +20,6 @@ namespace Dicom.Imaging {
 	/// </summary>
 	public class DicomImage {
 		#region Private Members
-		private const int OverlayColor = unchecked((int)0xffff00ff);
-
 		private int _currentFrame;
 		private IPixelData _pixelData;
 		private IPipeline _pipeline;
@@ -30,6 +28,7 @@ namespace Dicom.Imaging {
 		private GrayscaleRenderOptions _renderOptions;
 
 		private DicomOverlayData[] _overlays;
+		private int _overlayColor = unchecked((int)0xffff00ff);
 		#endregion
 
 		/// <summary>Creates DICOM image object from dataset</summary>
@@ -37,6 +36,7 @@ namespace Dicom.Imaging {
 		/// <param name="frame">Zero indexed frame number</param>
 		public DicomImage(DicomDataset dataset, int frame = 0) {
 			_scale = 1.0;
+			ShowOverlays = true;
 			Load(dataset, frame);
 		}
 
@@ -46,6 +46,7 @@ namespace Dicom.Imaging {
 		/// <param name="frame">Zero indexed frame number</param>
 		public DicomImage(string fileName, int frame = 0) {
 			_scale = 1.0;
+			ShowOverlays = true;
 			var file = DicomFile.Open(fileName);
 			Load(file.Dataset, frame);
 		}
@@ -114,6 +115,18 @@ namespace Dicom.Imaging {
 			}
 		}
 
+		/// <summary>Show or hide DICOM overlays</summary>
+		public bool ShowOverlays {
+			get;
+			set;
+		}
+
+		/// <summary>Color used for displaying DICOM overlays. Default is magenta.</summary>
+		public int OverlayColor {
+			get { return _overlayColor; }
+			set { _overlayColor = value; }
+		}
+
 #if !SILVERLIGHT
 		/// <summary>Renders DICOM image to System.Drawing.Image</summary>
 		/// <param name="frame">Zero indexed frame number</param>
@@ -122,11 +135,16 @@ namespace Dicom.Imaging {
 			if (frame != _currentFrame || _pixelData == null)
 				Load(Dataset, frame);
 
-			ImageGraphic graphic = new ImageGraphic(_pixelData);
+			var graphic = new ImageGraphic(_pixelData);
 
-			foreach (var overlay in _overlays) {
-				OverlayGraphic og = new OverlayGraphic(PixelDataFactory.Create(overlay), overlay.OriginX-1, overlay.OriginY-1, OverlayColor);
-				graphic.AddOverlay(og);
+			if (ShowOverlays) {
+				foreach (var overlay in _overlays) {
+					if ((frame + 1) < overlay.OriginFrame || (frame + 1) > (overlay.OriginFrame + overlay.NumberOfFrames - 1))
+						continue;
+
+					var og = new OverlayGraphic(PixelDataFactory.Create(overlay), overlay.OriginX - 1, overlay.OriginY - 1, OverlayColor);
+					graphic.AddOverlay(og);
+				}
 			}
 
 			return graphic.RenderImage(_pipeline.LUT);
@@ -142,12 +160,16 @@ namespace Dicom.Imaging {
 			if (frame != _currentFrame || _pixelData == null)
 				Load(Dataset, frame);
 
-			ImageGraphic graphic = new ImageGraphic(_pixelData);
+			var graphic = new ImageGraphic(_pixelData);
 
-			foreach (var overlay in _overlays) {
-				// DICOM overlay origin begins at (1,1)
-				OverlayGraphic og = new OverlayGraphic(PixelDataFactory.Create(overlay), overlay.OriginX - 1, overlay.OriginY - 1, OverlayColor);
-				graphic.AddOverlay(og);
+			if (ShowOverlays) {
+				foreach (var overlay in _overlays) {
+					if ((frame + 1) < overlay.OriginFrame || (frame + 1) > (overlay.OriginFrame + overlay.NumberOfFrames - 1))
+						continue;
+
+					var og = new OverlayGraphic(PixelDataFactory.Create(overlay), overlay.OriginX - 1, overlay.OriginY - 1, OverlayColor);
+					graphic.AddOverlay(og);
+				}
 			}
 
 			return graphic.RenderImageSource(_pipeline.LUT);
@@ -161,7 +183,7 @@ namespace Dicom.Imaging {
 		/// <param name="dataset">dataset to load pixeldata from</param>
 		/// <param name="frame">The frame number to create pixeldata for</param>
 		private void Load(DicomDataset dataset, int frame) {
-			Dataset = dataset;
+			Dataset = DicomTranscoder.ExtractOverlays(dataset);
 
 			if (PixelData == null) {
 				PixelData = DicomPixelData.Create(Dataset);

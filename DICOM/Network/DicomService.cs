@@ -93,8 +93,16 @@ namespace Dicom.Network {
 		}
 
 		private void CloseConnection(int errorCode) {
+			if (!_isConnected)
+				return;
+
 			_isConnected = false;
 			try { _network.Close(); } catch { }
+
+			if (errorCode > 0)
+				Logger.Error("Connection closed with error: {0}", errorCode);
+			else
+				Logger.Error("Connection closed");
 
 			if (this is IDicomServiceProvider)
 				(this as IDicomServiceProvider).OnConnectionClosed(errorCode);
@@ -110,6 +118,9 @@ namespace Dicom.Network {
 				_network.BeginRead(buffer, 0, 6, EndReadPDUHeader, buffer);
 			} catch (ObjectDisposedException) {
 				// silently ignore
+				CloseConnection(0);
+			} catch (NullReferenceException) {
+				// connection already closed; silently ignore
 				CloseConnection(0);
 			} catch (IOException e) {
 				int error = 0;
@@ -151,6 +162,9 @@ namespace Dicom.Network {
 				_network.BeginRead(buffer, 6, length, EndReadPDU, buffer);
 			} catch (ObjectDisposedException) {
 				// silently ignore
+				CloseConnection(0);
+			} catch (NullReferenceException) {
+				// connection already closed; silently ignore
 				CloseConnection(0);
 			} catch (IOException e) {
 				int error = 0;
@@ -269,6 +283,9 @@ namespace Dicom.Network {
 					Logger.Error("IO exception while reading PDU: {0}", e.ToString());
 
 				CloseConnection(error);
+			} catch (NullReferenceException) {
+				// connection already closed; silently ignore
+				CloseConnection(0);
 			} catch (Exception e) {
 				Logger.Error("Exception processing PDU: {0}", e.ToString());
 				CloseConnection(0);
@@ -665,8 +682,14 @@ namespace Dicom.Network {
 				pc = Association.PresentationContexts.FirstOrDefault(x => x.Result == DicomPresentationContextResult.Accept && x.AbstractSyntax == msg.SOPClassUID);
 			}
 
-			if (pc == null)
-			throw new DicomNetworkException("No accepted presentation context found for abstract syntax: {0}", msg.SOPClassUID);
+			if (pc == null) {
+				Logger.Error("No accepted presentation context found for abstract syntax: {0}", msg.SOPClassUID);
+				lock (_lock)
+					_sending = false;
+				SendNextMessage();
+				return;
+			}
+
 			var dimse = new Dimse();
 			dimse.Message = msg;
 			dimse.PresentationContext = pc;

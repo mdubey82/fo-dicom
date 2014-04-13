@@ -1,5 +1,13 @@
-#### v1.0.37
+#### v1.0.37 (2/19/2014)
+* Add DICOM Compare tool to project
 * Add support for disabling TCP Nagle algorithm
+* Better handling of aborted connections
+* Fix some UID values containing encoding characters
+* Fix extraction of embedded overlays
+* Utility methods for calculating window/level
+* Use number keys to change W/L calculation mode in dump utility
+* Use O key to show/hide overlays in dump utility
+* Fix byte swapping for Implicit VR single byte images
 
 #### v1.0.36 (8/6/2013)
 * Fix bug sorting private tags

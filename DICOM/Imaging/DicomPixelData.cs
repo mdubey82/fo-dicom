@@ -358,7 +358,7 @@ namespace Dicom.Imaging {
 				int offset = UncompressedFrameSize * frame;
 				IByteBuffer buffer = new RangeByteBuffer(Element.Buffer, (uint)offset, (uint)UncompressedFrameSize);
 
-				// mainly for GE Private Implicit VR Little Endian
+				// mainly for GE Private Implicit VR Big Endian
 				if (Syntax.SwapPixelData)
 					buffer = new SwapByteBuffer(buffer, 2);
 
@@ -370,10 +370,11 @@ namespace Dicom.Imaging {
 					throw new DicomImagingException("Expected pixel data element to have a CompositeByteBuffer.");
 
 				CompositeByteBuffer buffer = Element.Buffer as CompositeByteBuffer;
-				if (BytesAllocated == 1)
-					data = new SwapByteBuffer(data , 2);
-				buffer.Buffers.Add(data);
 
+				if (Syntax.SwapPixelData)
+					data = new SwapByteBuffer(data , 2);
+
+				buffer.Buffers.Add(data);
 				NumberOfFrames++;
 			}
 		}
